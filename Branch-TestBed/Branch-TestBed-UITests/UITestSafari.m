@@ -7,72 +7,81 @@
 //
 
 #import <XCTest/XCTest.h>
-//#import "Branch/NSString+Branch.h"
-
-// Ignore UITests availability for iOS 8 and lower in this example.
-#pragma clang diagnostic ignored "-Wpartial-availability"
-
-static NSTimeInterval const kDeepLinkSleepTimeInterval = 10.0;
-static NSTimeInterval const kLoadWikiPageTimeInterval  = 3.0;
-static NSString* const kWikiPageURL =
-    @"https://github.com/BranchMetrics/ios-branch-deep-linking/wiki/"
-     "UITest-for-Testbed-App-for-Universal-links";
-static NSString* const kUniversalLinkTag = @"Universal Link TestBed Obj-c";
-
-#pragma mark - UITestSafari
 
 @interface UITestSafari : XCTestCase
 @end
 
 @interface XCUIApplication (Private)
 - (id)initPrivateWithPath:(NSString *)path bundleID:(NSString *)bundleID;
-- (void)resolve;
 @end
 
+/**
+ This is an integration test that depends on the production server!
+ */
 @implementation UITestSafari
 
 - (void)setUp {
     [super setUp];
-
-    // In UI tests it is usually best to stop immediately when a failure occurs.
     self.continueAfterFailure = NO;
-
-    // UI tests must launch the application that they test.
-    // Doing this in setup will make sure it happens for each test method.
-    [[[XCUIApplication alloc] init] launch];
-    
-    // In UI tests it’s important to set the initial state - such as interface orientation -
-    // required for your tests before they run. The setUp method is a good place to do this.
+    [self denyPushNotifications];
 }
 
 - (void)tearDown {
-    // Put teardown code here. This method is called after the invocation of each test method in the class.
     [super tearDown];
 }
 
--(void)testDeepLinking {
-    [XCUIDevice sharedDevice].orientation = UIDeviceOrientationFaceUp;
+- (void)denyPushNotifications {
     
-    XCUIApplication *safariApp = [self openSafariWithUrl:kWikiPageURL];
-    [safariApp.links[kUniversalLinkTag] tap];
-    sleep(kDeepLinkSleepTimeInterval);
+    // if the OS launches the push notification permission request, deny it
+    // this only triggers if a test attempts to tap an element and a system dialog gets in the way
+    [self addUIInterruptionMonitorWithDescription:@"Allow push" handler:^BOOL(XCUIElement * _Nonnull interruptingElement) {
+        if (interruptingElement.buttons[@"Don’t Allow"].exists) {
+            [interruptingElement.buttons[@"Don’t Allow"] tap];
+        }
+        return YES;
+    }];
     
+    // install and open test app, attempt to tap anywhere on the screen
     XCUIApplication *currentApp = [[XCUIApplication alloc] init];
-    XCUIElement* element = currentApp.textViews[@"DeepLinkData"];
-    XCTAssertTrue([element.value containsString:@"Successfully Deeplinked"]);
+    [currentApp launch];
+    [currentApp tap];
 }
 
--(XCUIApplication *) openSafariWithUrl:(NSString*) url {
-    XCUIApplication *app =
-        [[XCUIApplication alloc] initPrivateWithPath:nil bundleID:@"com.apple.mobilesafari"];
+- (XCUIApplication *)openSafariWithUrl:(NSString*) url {
+    XCUIApplication *app = [[XCUIApplication alloc] initPrivateWithPath:nil bundleID:@"com.apple.mobilesafari"];
     [app launch];
-    sleep(1.0);
-    [app.otherElements[@"URL"] tap];
-    [app.textFields[@"Search or enter website name"] tap];
-    [app typeText:url];
-    [app.buttons[@"Go"] tap];
-    sleep(kLoadWikiPageTimeInterval);
+    if ([app.otherElements[@"URL"] waitForExistenceWithTimeout:5.0]) {
+        [app.otherElements[@"URL"] tap];
+        if ([app.textFields[@"Search or enter website name"] waitForExistenceWithTimeout:5.0]) {
+            [app.textFields[@"Search or enter website name"] tap];
+            [app typeText:url];
+            [app.buttons[@"Go"] tap];
+        }
+    }
     return app;
+}
+
+- (void)testDeepLinking {
+    // open webpage and click deeplink to test app
+    NSString *webpage = @"https://github.com/BranchMetrics/ios-branch-deep-linking/wiki/UITest-for-Testbed-App-for-Universal-links";
+    XCUIApplication *safariApp = [self openSafariWithUrl:webpage];
+    if ([safariApp.links[@"Universal Link TestBed Obj-c"] waitForExistenceWithTimeout:5.0]) {
+        [safariApp.links[@"Universal Link TestBed Obj-c"] tap];
+    }
+        
+    // if safari requests permission to open the test app, grant it
+    if ([safariApp.buttons[@"Open"] waitForExistenceWithTimeout:5.0]) {
+        [safariApp.buttons[@"Open"] tap];
+    }
+    
+    // check if app opened with deeplink
+    XCUIApplication *currentApp = [[XCUIApplication alloc] init];
+    if ([currentApp.textViews[@"DeepLinkData"] waitForExistenceWithTimeout:5.0]) {
+        XCUIElement* element = currentApp.textViews[@"DeepLinkData"];
+        XCTAssertTrue([element.value containsString:@"Successfully Deeplinked"]);
+    } else {
+        XCTFail(@"Did not find successful deeplink screen");
+    }
 }
 
 @end

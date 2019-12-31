@@ -43,6 +43,7 @@ didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
 
     // Check for Apple Search Ad attribution (trade-off: slows down app startup):
     [branch delayInitToCheckForSearchAds];
+    [branch ignoreAppleSearchAdsTestData];
 
     /*
      *    Required: Initialize Branch, passing a deep link handler block:
