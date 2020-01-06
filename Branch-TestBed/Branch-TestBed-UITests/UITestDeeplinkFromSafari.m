@@ -8,7 +8,8 @@
 
 #import <XCTest/XCTest.h>
 
-@interface UITestSafari : XCTestCase
+@interface UITestDeeplinkFromSafari : XCTestCase
+
 @end
 
 @interface XCUIApplication (Private)
@@ -18,16 +19,15 @@
 /**
  This is an integration test that depends on the production server!
  */
-@implementation UITestSafari
+@implementation UITestDeeplinkFromSafari
 
 - (void)setUp {
-    [super setUp];
     self.continueAfterFailure = NO;
     [self denyPushNotifications];
 }
 
 - (void)tearDown {
-    [super tearDown];
+
 }
 
 - (void)denyPushNotifications {
