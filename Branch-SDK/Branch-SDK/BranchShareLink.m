@@ -134,14 +134,35 @@ typedef NS_ENUM(NSInteger, BranchShareActivityItemType) {
         [_activityItems addObject:item];
     }
 
-    NSString *URLString =
-        [[Branch getInstance]
-            getLongURLWithParams:self.serverParameters
-            andChannel:self.linkProperties.channel
-            andTags:self.linkProperties.tags
-            andFeature:self.linkProperties.feature
-            andStage:self.linkProperties.stage
-            andAlias:self.linkProperties.alias];
+    NSString *URLString;
+    if (@available(iOS 13, *)) {
+        // iOS 13 uses the placeholder link to generate a preview header
+        // attempt to use a short link so the preview is nicer
+        NSString *userAgentString = [BNCUserAgentCollector instance].userAgent;
+        URLString = [[Branch getInstance]
+                     getShortURLWithParams:self.serverParameters
+                     andTags:self.linkProperties.tags
+                     andChannel:self.linkProperties.channel
+                     andFeature:self.linkProperties.feature
+                     andStage:self.linkProperties.stage
+                     andCampaign:self.linkProperties.campaign
+                     andAlias:self.linkProperties.alias
+                     ignoreUAString:userAgentString
+                     forceLinkCreation:YES];
+        
+        // Let's skip generating an extra shortlink for now.
+        self.shareURL = [NSURL URLWithString:URLString];
+        
+    } else {
+        URLString = [[Branch getInstance]
+                     getLongURLWithParams:self.serverParameters
+                     andChannel:self.linkProperties.channel
+                     andTags:self.linkProperties.tags
+                     andFeature:self.linkProperties.feature
+                     andStage:self.linkProperties.stage
+                     andAlias:self.linkProperties.alias];
+    }
+    
     self.shareURL = [[NSURL alloc] initWithString:URLString];
     if (self.returnURL)
         item = [[BranchShareActivityItem alloc] initWithPlaceholderItem:self.shareURL];
@@ -257,31 +278,33 @@ typedef NS_ENUM(NSInteger, BranchShareActivityItemType) {
     // Because Facebook et al immediately scrape URLs, we add an additional parameter to the
     // existing list, telling the backend to ignore the first click.
 
-    NSSet*scrapers = [NSSet setWithArray:@[
-        @"Facebook",
-        @"Twitter",
-        @"Slack",
-        @"Apple Notes",
-        @"Skype",
-        @"SMS",
-        @"Apple Reminders"
-    ]];
-    NSString *userAgentString = nil;
-    if (self.linkProperties.channel && [scrapers containsObject:self.linkProperties.channel]) {
-        userAgentString = [BNCUserAgentCollector instance].userAgent;
+    if (!self.shareURL) {
+        NSSet*scrapers = [NSSet setWithArray:@[
+            @"Facebook",
+            @"Twitter",
+            @"Slack",
+            @"Apple Notes",
+            @"Skype",
+            @"SMS",
+            @"Apple Reminders"
+        ]];
+        NSString *userAgentString = nil;
+        if (self.linkProperties.channel && [scrapers containsObject:self.linkProperties.channel]) {
+            userAgentString = [BNCUserAgentCollector instance].userAgent;
+        }
+        NSString *URLString =
+            [[Branch getInstance]
+                getShortURLWithParams:self.serverParameters
+                andTags:self.linkProperties.tags
+                andChannel:self.linkProperties.channel
+                andFeature:self.linkProperties.feature
+                andStage:self.linkProperties.stage
+                andCampaign:self.linkProperties.campaign
+                andAlias:self.linkProperties.alias
+                ignoreUAString:userAgentString
+                forceLinkCreation:YES];
+        self.shareURL = [NSURL URLWithString:URLString];
     }
-    NSString *URLString =
-        [[Branch getInstance]
-            getShortURLWithParams:self.serverParameters
-            andTags:self.linkProperties.tags
-            andChannel:self.linkProperties.channel
-            andFeature:self.linkProperties.feature
-            andStage:self.linkProperties.stage
-            andCampaign:self.linkProperties.campaign
-            andAlias:self.linkProperties.alias
-            ignoreUAString:userAgentString
-            forceLinkCreation:YES];
-    self.shareURL = [NSURL URLWithString:URLString];
     return (self.returnURL) ? self.shareURL :self.shareURL.absoluteString;
 }
 

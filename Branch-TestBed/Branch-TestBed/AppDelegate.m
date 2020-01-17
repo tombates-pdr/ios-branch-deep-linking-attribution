@@ -42,7 +42,7 @@ didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     //[branch validateSDKIntegration];
 
     // Check for Apple Search Ad attribution (trade-off: slows down app startup):
-    [branch delayInitToCheckForSearchAds];
+    //[branch delayInitToCheckForSearchAds];
 
     /*
      *    Required: Initialize Branch, passing a deep link handler block:
