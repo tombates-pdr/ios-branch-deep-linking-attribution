@@ -18,6 +18,8 @@
 - (BOOL)application:(UIApplication *)application
 didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     BNCLogSetDisplayLevel(BNCLogLevelAll);
+    [self syncSDKWithSettings];
+    [self registerForSettingsUpdates];
 
     /*
        Set Branch.useTestBranchKey = YES; to have Branch use the test key that's in the app's
@@ -56,6 +58,15 @@ didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     [self registerForPushNotifications:application];
 
     return YES;
+}
+
+- (void)registerForSettingsUpdates {
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(syncSDKWithSettings) name:NSUserDefaultsDidChangeNotification object:nil];
+}
+
+- (void)syncSDKWithSettings {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    [[Branch getInstance] disableAdNetworkCallouts:[defaults boolForKey:@"disable_ad_network_callouts"]];
 }
 
 // pre init support is meant for extensions, for example, when Adobe axtension needs to pass in Adobe IDs
