@@ -225,12 +225,15 @@ CFStringRef SecCopyErrorMessageString(OSStatus status, void *reserved) {
         NSError*error = [self storeValue:@"Value" forService:@"BranchKeychainService" key:@"Temp" cloudAccessGroup:nil];
         if (error) BNCLogDebugSDK(@"Error storing temp value: %@.", error);
         
-        NSDictionary* dictionary = @{
+        NSMutableDictionary* dictionary = [@{
             (__bridge id)kSecClass:                 (__bridge id)kSecClassGenericPassword,
             (__bridge id)kSecReturnAttributes:      (__bridge id)kCFBooleanTrue,
             (__bridge id)kSecAttrSynchronizable:    (__bridge id)kSecAttrSynchronizableAny,
-            (__bridge id)kSecMatchLimit:            (__bridge id)kSecMatchLimitOne
-        };
+            (__bridge id)kSecMatchLimit:            (__bridge id)kSecMatchLimitOne,
+        } mutableCopy];
+        if (@available(iOS 9.0, *)) {
+          dictionary[(__bridge id)kSecUseAuthenticationUI] = (__bridge id)kSecUseAuthenticationUIFail;
+        }
         CFDictionaryRef resultDictionary = NULL;
         OSStatus status = SecItemCopyMatching((__bridge CFDictionaryRef)dictionary, (CFTypeRef*)&resultDictionary);
         if (status == errSecItemNotFound) return nil;
